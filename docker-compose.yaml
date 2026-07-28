@@ -1,0 +1,117 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+    networks:
+      - coundys_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    # Only expose to host if you need psql access from outside the network.
+    # ports:
+    #   - "5432:5432"
+
+  etl:
+    build:
+      context: ./etl
+      dockerfile: Dockerfile
+    container_name: etl
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - coundys_net
+    restart: "no"
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: fastapi
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      etl:
+        condition: service_completed_successfully
+    expose:
+      - "8000"
+    restart: unless-stopped
+    networks:
+      - coundys_net
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  nginx:
+    image: nginx:stable-alpine
+    container_name: nginx
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx:/etc/nginx/conf.d:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    restart: unless-stopped
+    networks:
+      - coundys_net
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: certbot
+    restart: unless-stopped
+    depends_on:
+      - nginx
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: ["sh", "-c"]
+    command:
+      - >
+        certbot certonly --webroot
+        --webroot-path=/var/www/certbot
+        --email ${CERTBOT_EMAIL}
+        --agree-tos
+        --no-eff-email
+        -d ${DOMAIN}
+        --keep-until-expiring
+        && while :; do
+          certbot renew --quiet;
+          sleep 12h;
+        done
+    networks:
+      - coundys_net
+
+volumes:
+  postgres_data:
+
+networks:
+  coundys_net:
+    driver: bridge
