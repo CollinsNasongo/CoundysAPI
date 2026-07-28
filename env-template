@@ -1,0 +1,51 @@
+# ----------------------------
+# Application
+# ----------------------------
+PROJECT_NAME=coundys-api
+APP_ENV=production
+DEBUG=false
+
+HOST=0.0.0.0
+PORT=8000
+
+# ----------------------------
+# Database
+# ----------------------------
+POSTGRES_USER=<your_db_user>
+POSTGRES_PASSWORD=<generate_with_openssl_rand_base64_24>
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+POSTGRES_DB=<your_db_name>
+GOLD_SCHEMA=coundys_gold
+API_PREFIX=/api/v1
+DEFAULT_PAGE_SIZE=50
+MAX_PAGE_SIZE=200
+DB_ECHO=false
+
+DATABASE_URL=postgresql+psycopg://<your_db_user>:<same_password_as_above>@postgres:5432/<your_db_name>
+
+# ----------------------------
+# Security
+# ----------------------------
+SECRET_KEY=<generate_with_openssl_rand_hex_32>
+
+# JWT (if using authentication)
+JWT_SECRET_KEY=<generate_with_openssl_rand_hex_32>
+JWT_ALGORITHM=HS256
+JWT_EXPIRE_MINUTES=60
+
+# ----------------------------
+# CORS
+# ----------------------------
+BACKEND_CORS_ORIGINS=["https://coundys.co.ke","https://www.coundys.co.ke"]
+
+# ----------------------------
+# Logging
+# ----------------------------
+LOG_LEVEL=INFO
+
+# ----------------------------
+# Certbot / TLS
+# ----------------------------
+CERTBOT_EMAIL=<your_email>
+DOMAIN=coundys.co.ke
