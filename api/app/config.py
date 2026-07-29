@@ -11,7 +11,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    PROJECT_NAME: str = "Voter Registration API - 2022"
+    PROJECT_NAME: str = "Voter Count API - 2022"
     API_PREFIX: str = "/api/v1"
     GOLD_SCHEMA: str = "coundys_gold"
 
