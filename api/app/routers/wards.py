@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.common import Pagination, name_or_code_filter, paginate, pagination_params
+from app.common import Pagination, paginate, pagination_params
 from app.database import get_db
 from app.models import PollingStation, WardSummary
 from app.schemas import Page, PollingStationRead, WardRead
@@ -14,48 +14,75 @@ router = APIRouter(prefix="/wards", tags=["wards"])
 
 @router.get("", response_model=Page[WardRead], summary="List / search wards")
 def list_wards(
-    q: str | None = Query(default=None, description="Search by ward name or code"),
-    constituency_code: int | None = Query(default=None, description="Filter by parent constituency"),
-    county_code: int | None = Query(default=None, description="Filter by parent county"),
+    q: str | None = Query(default=None, description="Search by ward name"),
+    constituency_name: str | None = Query(default=None, description="Filter by parent constituency name (partial match)"),
+    county_code: int | None = Query(default=None, description="Filter by parent county code"),
     db: Session = Depends(get_db),
     page: Pagination = Depends(pagination_params),
 ) -> Page:
     stmt = select(WardSummary)
-    if constituency_code is not None:
-        stmt = stmt.where(WardSummary.constituency_code == constituency_code)
+
+    if constituency_name:
+        stmt = stmt.where(WardSummary.constituency_name.ilike(f"%{constituency_name}%"))
+
     if county_code is not None:
         stmt = stmt.where(WardSummary.county_code == county_code)
+
     if q:
-        stmt = stmt.where(
-            name_or_code_filter(
-                q, code_col=WardSummary.ward_code, name_col=WardSummary.ward_name
-            )
-        )
+        stmt = stmt.where(WardSummary.ward_name.ilike(f"%{q}%"))
+
     stmt = stmt.order_by(WardSummary.registered_voters.desc())
     items, total = paginate(db, stmt, page)
     return Page(items=items, total=total, limit=page.limit, offset=page.offset)
 
 
-@router.get("/{ward_code}", response_model=WardRead, summary="Get one ward")
-def get_ward(ward_code: int, db: Session = Depends(get_db)) -> WardSummary:
-    row = db.get(WardSummary, ward_code)
-    if row is None:
+@router.get("/{ward_name}", response_model=list[WardRead], summary="Get ward(s) by name")
+def get_ward(
+    ward_name: str,
+    constituency_name: str | None = Query(default=None, description="Disambiguate if multiple wards share this name"),
+    county_code: int | None = Query(default=None, description="Disambiguate if multiple wards share this name"),
+    db: Session = Depends(get_db),
+) -> list[WardSummary]:
+    stmt = select(WardSummary).where(WardSummary.ward_name.ilike(ward_name))
+    if constituency_name:
+        stmt = stmt.where(WardSummary.constituency_name.ilike(f"%{constituency_name}%"))
+    if county_code is not None:
+        stmt = stmt.where(WardSummary.county_code == county_code)
+
+    rows = db.execute(stmt).scalars().all()
+    if not rows:
         raise HTTPException(status_code=404, detail="Ward not found")
-    return row
+    return rows
 
 
 @router.get(
-    "/{ward_code}/polling-stations",
+    "/{ward_name}/polling-stations",
     response_model=Page[PollingStationRead],
     summary="Polling stations in a ward",
 )
 def ward_polling_stations(
-    ward_code: int,
+    ward_name: str,
+    constituency_name: str | None = Query(default=None, description="Disambiguate if multiple wards share this name"),
+    county_code: int | None = Query(default=None, description="Disambiguate if multiple wards share this name"),
     db: Session = Depends(get_db),
     page: Pagination = Depends(pagination_params),
 ) -> Page:
-    if db.get(WardSummary, ward_code) is None:
+    ward_stmt = select(WardSummary).where(WardSummary.ward_name.ilike(ward_name))
+    if constituency_name:
+        ward_stmt = ward_stmt.where(WardSummary.constituency_name.ilike(f"%{constituency_name}%"))
+    if county_code is not None:
+        ward_stmt = ward_stmt.where(WardSummary.county_code == county_code)
+
+    wards = db.execute(ward_stmt).scalars().all()
+    if not wards:
         raise HTTPException(status_code=404, detail="Ward not found")
+    if len(wards) > 1:
+        raise HTTPException(
+            status_code=409,
+            detail="Multiple wards match this name; narrow with constituency_name or county_code",
+        )
+
+    ward_code = wards[0].ward_code
     stmt = (
         select(PollingStation)
         .where(PollingStation.ward_code == ward_code)
