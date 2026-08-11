@@ -13,12 +13,13 @@ router = APIRouter(prefix="/counties", tags=["counties"])
 
 
 def _resolve_county(identifier: str, db: Session) -> list[CountySummary]:
-    """Look up county by code (if numeric) or name (partial, case-insensitive)."""
-    if identifier.isdigit():
-        stmt = select(CountySummary).where(CountySummary.county_code == int(identifier))
-    else:
-        stmt = select(CountySummary).where(CountySummary.county_name.ilike(f"%{identifier}%"))
-    return db.execute(stmt).scalars().all()
+    """Look up counties by exact code (numeric) or name search (same semantics as list_counties)."""
+    stmt = select(CountySummary).where(
+        name_or_code_filter(
+            identifier, code_col=CountySummary.county_code, name_col=CountySummary.county_name
+        )
+    )
+    return list(db.execute(stmt).scalars().all())
 
 
 @router.get("", response_model=Page[CountyRead], summary="List / search counties")
@@ -41,13 +42,15 @@ def list_counties(
 
 @router.get(
     "/{identifier}",
-    response_model=list[CountyRead],
-    summary="Get county(ies) by code or name",
+    response_model=CountyRead | list[CountyRead],
+    summary="Get county by exact code, or search by name",
 )
-def get_county(identifier: str, db: Session = Depends(get_db)) -> list[CountySummary]:
+def get_county(identifier: str, db: Session = Depends(get_db)) -> CountySummary | list[CountySummary]:
     rows = _resolve_county(identifier, db)
     if not rows:
         raise HTTPException(status_code=404, detail="County not found")
+    if identifier.strip().isdigit():
+        return rows[0]
     return rows
 
 
