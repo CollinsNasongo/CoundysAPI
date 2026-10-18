@@ -32,11 +32,14 @@ def _resolve_county(identifier: str, election_year: int, db: Session) -> list[Co
 @router.get("", response_model=Page[CountyRead], summary="List / search counties")
 def list_counties(
     q: str | None = Query(default=None, description="Search by county name or code"),
+    codes: list[int] | None = Query(default=None, description="Only these county codes (repeatable)"),
     election_year: int = Depends(election_year_param),
     db: Session = Depends(get_db),
     page: Pagination = Depends(pagination_params),
 ) -> Page:
     stmt = select(CountySummary).where(CountySummary.election_year == election_year)
+    if codes:
+        stmt = stmt.where(CountySummary.county_code.in_(codes))
     if q:
         stmt = stmt.where(
             name_or_code_filter(

@@ -33,6 +33,23 @@ GET /api/v1/wards?name=Kilimani
 GET /api/v1/polling-stations?name=Moi%20Avenue%20Primary
 ```
 
+## Frontend
+
+`frontend/` is a React + Vite dashboard (County Electorate Explorer) built on the API:
+
+- **Overview**: national totals for the selected election year, change vs the previous year, top counties.
+- **Compare**: pick up to 8 counties, constituencies or wards and compare two election years.
+
+Local development (expects the API on `http://localhost:8000`; override with `API_PROXY_TARGET`):
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+In Docker, the `frontend` service serves the built app on port 80 and proxies `/api/` to the `api` service.
+
 ## Tech Stack
 
 - Python

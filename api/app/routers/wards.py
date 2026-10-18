@@ -17,11 +17,19 @@ def list_wards(
     q: str | None = Query(default=None, description="Search by ward name"),
     constituency_name: str | None = Query(default=None, description="Filter by parent constituency name (partial match)"),
     county_code: int | None = Query(default=None, description="Filter by parent county code"),
+    constituency_code: int | None = Query(default=None, description="Filter by parent constituency code"),
+    codes: list[int] | None = Query(default=None, description="Only these ward codes (repeatable)"),
     election_year: int = Depends(election_year_param),
     db: Session = Depends(get_db),
     page: Pagination = Depends(pagination_params),
 ) -> Page:
     stmt = select(WardSummary).where(WardSummary.election_year == election_year)
+
+    if codes:
+        stmt = stmt.where(WardSummary.ward_code.in_(codes))
+
+    if constituency_code is not None:
+        stmt = stmt.where(WardSummary.constituency_code == constituency_code)
 
     if constituency_name:
         stmt = stmt.where(WardSummary.constituency_name.ilike(f"%{constituency_name}%"))

@@ -16,6 +16,7 @@ router = APIRouter(prefix="/constituencies", tags=["constituencies"])
 def list_constituencies(
     q: str | None = Query(default=None, description="Search by constituency name"),
     county_code: int | None = Query(default=None, description="Filter by parent county"),
+    codes: list[int] | None = Query(default=None, description="Only these constituency codes (repeatable)"),
     election_year: int = Depends(election_year_param),
     db: Session = Depends(get_db),
     page: Pagination = Depends(pagination_params),
@@ -23,6 +24,8 @@ def list_constituencies(
     stmt = select(ConstituencySummary).where(
         ConstituencySummary.election_year == election_year
     )
+    if codes:
+        stmt = stmt.where(ConstituencySummary.constituency_code.in_(codes))
     if county_code is not None:
         stmt = stmt.where(ConstituencySummary.county_code == county_code)
     if q:

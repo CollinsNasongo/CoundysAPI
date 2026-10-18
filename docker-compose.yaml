@@ -66,12 +66,28 @@ services:
       retries: 3
       start_period: 15s
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    depends_on:
+      api:
+        condition: service_healthy
+    expose:
+      - "80"
+    restart: unless-stopped
+    networks:
+      - coundys_net
+
   nginx:
     image: nginx:stable-alpine
     container_name: nginx
     depends_on:
       api:
         condition: service_healthy
+      frontend:
+        condition: service_started
     ports:
       - "80:80"
       - "443:443"

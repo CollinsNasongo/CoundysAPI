@@ -65,14 +65,13 @@ def name_or_code_filter(
     """Build a WHERE predicate that searches by code or name from one box.
 
     - all-digit input  -> exact code match
-    - otherwise        -> case-insensitive PREFIX match on name (sargable;
-                          uses the IX_*_name indexes). Change to f"%{q}%" for
-                          contains-search at the cost of an index scan.
+    - otherwise        -> case-insensitive PREFIX match on name. Change to
+                          f"%{q}%" for contains-search.
     """
     q = q.strip()
     if q.isdigit():
         return code_col == int(q)
-    return name_col.like(f"{q}%")
+    return name_col.ilike(f"{q}%")
 
 
 def paginate(db: Session, stmt: Select, page: Pagination) -> tuple[list, int]:
