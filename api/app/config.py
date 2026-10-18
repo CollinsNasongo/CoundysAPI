@@ -11,12 +11,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    PROJECT_NAME: str = "Registered Voters Per Polling Station - 2022"
+    PROJECT_NAME: str = "Registered Voters Per Polling Station"
     API_PREFIX: str = "/api/v1"
     GOLD_SCHEMA: str = "coundys_gold"
-
-    # SQLAlchemy URL for SQL Server, e.g.
-    # mssql+pyodbc://user:pass@host:1433/voterdb?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes
     DATABASE_URL: str
     DB_POOL_SIZE: int = 10
     DB_MAX_OVERFLOW: int = 20

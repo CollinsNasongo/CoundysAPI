@@ -19,6 +19,7 @@ class Page(BaseModel, Generic[T]):
 
 
 class NationalSummaryRead(ORMModel):
+    election_year: int
     total_counties: int
     total_constituencies: int
     total_wards: int
@@ -32,6 +33,7 @@ class NationalSummaryRead(ORMModel):
 
 
 class CountyRead(ORMModel):
+    election_year: int
     county_code: int
     county_name: str
     constituency_count: int
@@ -44,6 +46,7 @@ class CountyRead(ORMModel):
 
 
 class ConstituencyRead(ORMModel):
+    election_year: int
     constituency_code: int
     constituency_name: str
     county_code: int
@@ -57,6 +60,7 @@ class ConstituencyRead(ORMModel):
 
 
 class WardRead(ORMModel):
+    election_year: int
     ward_code: int
     ward_name: str
     constituency_code: int
@@ -71,10 +75,13 @@ class WardRead(ORMModel):
 
 
 class PollingStationRead(ORMModel):
+    election_year: int
     polling_station_id: int
     polling_station_code: int
     polling_station_seq: int
     polling_station_name: str
+    reg_centre_code: int | None
+    reg_centre_name: str | None
     ward_code: int
     ward_name: str
     constituency_code: int

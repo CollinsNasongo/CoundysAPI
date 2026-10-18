@@ -15,7 +15,7 @@ class NationalSummary(Base):
     __tablename__ = "national_summary"
     __table_args__ = _SCHEMA
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    election_year: Mapped[int] = mapped_column(Integer, primary_key=True)
     total_counties: Mapped[int] = mapped_column(Integer)
     total_constituencies: Mapped[int] = mapped_column(Integer)
     total_wards: Mapped[int] = mapped_column(Integer)
@@ -32,6 +32,7 @@ class CountySummary(Base):
     __tablename__ = "county_summary"
     __table_args__ = _SCHEMA
 
+    election_year: Mapped[int] = mapped_column(Integer, primary_key=True)
     county_code: Mapped[int] = mapped_column(Integer, primary_key=True)
     county_name: Mapped[str] = mapped_column(String(100))
     constituency_count: Mapped[int] = mapped_column(Integer)
@@ -48,6 +49,7 @@ class ConstituencySummary(Base):
     __tablename__ = "constituency_summary"
     __table_args__ = _SCHEMA
 
+    election_year: Mapped[int] = mapped_column(Integer, primary_key=True)
     constituency_code: Mapped[int] = mapped_column(Integer, primary_key=True)
     constituency_name: Mapped[str] = mapped_column(String(150))
     county_code: Mapped[int] = mapped_column(Integer, index=True)
@@ -65,6 +67,7 @@ class WardSummary(Base):
     __tablename__ = "ward_summary"
     __table_args__ = _SCHEMA
 
+    election_year: Mapped[int] = mapped_column(Integer, primary_key=True)
     ward_code: Mapped[int] = mapped_column(Integer, primary_key=True)
     ward_name: Mapped[str] = mapped_column(String(150))
     constituency_code: Mapped[int] = mapped_column(Integer, index=True)
@@ -84,9 +87,12 @@ class PollingStation(Base):
     __table_args__ = _SCHEMA
 
     polling_station_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    election_year: Mapped[int] = mapped_column(Integer, index=True)
     polling_station_code: Mapped[int] = mapped_column(BigInteger, index=True)
     polling_station_seq: Mapped[int] = mapped_column(Integer)
     polling_station_name: Mapped[str] = mapped_column(String(250))
+    reg_centre_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    reg_centre_name: Mapped[str | None] = mapped_column(String(250), nullable=True)
     ward_code: Mapped[int] = mapped_column(Integer, index=True)
     ward_name: Mapped[str] = mapped_column(String(150))
     constituency_code: Mapped[int] = mapped_column(Integer, index=True)

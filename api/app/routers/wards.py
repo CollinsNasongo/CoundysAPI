@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.common import Pagination, paginate, pagination_params
+from app.common import Pagination, election_year_param, paginate, pagination_params
 from app.database import get_db
 from app.models import PollingStation, WardSummary
 from app.schemas import Page, PollingStationRead, WardRead
@@ -17,10 +17,11 @@ def list_wards(
     q: str | None = Query(default=None, description="Search by ward name"),
     constituency_name: str | None = Query(default=None, description="Filter by parent constituency name (partial match)"),
     county_code: int | None = Query(default=None, description="Filter by parent county code"),
+    election_year: int = Depends(election_year_param),
     db: Session = Depends(get_db),
     page: Pagination = Depends(pagination_params),
 ) -> Page:
-    stmt = select(WardSummary)
+    stmt = select(WardSummary).where(WardSummary.election_year == election_year)
 
     if constituency_name:
         stmt = stmt.where(WardSummary.constituency_name.ilike(f"%{constituency_name}%"))
@@ -41,9 +42,13 @@ def get_ward(
     ward_name: str,
     constituency_name: str | None = Query(default=None, description="Disambiguate if multiple wards share this name"),
     county_code: int | None = Query(default=None, description="Disambiguate if multiple wards share this name"),
+    election_year: int = Depends(election_year_param),
     db: Session = Depends(get_db),
 ) -> list[WardSummary]:
-    stmt = select(WardSummary).where(WardSummary.ward_name.ilike(ward_name))
+    stmt = select(WardSummary).where(
+        WardSummary.election_year == election_year,
+        WardSummary.ward_name.ilike(ward_name),
+    )
     if constituency_name:
         stmt = stmt.where(WardSummary.constituency_name.ilike(f"%{constituency_name}%"))
     if county_code is not None:
@@ -64,10 +69,14 @@ def ward_polling_stations(
     ward_name: str,
     constituency_name: str | None = Query(default=None, description="Disambiguate if multiple wards share this name"),
     county_code: int | None = Query(default=None, description="Disambiguate if multiple wards share this name"),
+    election_year: int = Depends(election_year_param),
     db: Session = Depends(get_db),
     page: Pagination = Depends(pagination_params),
 ) -> Page:
-    ward_stmt = select(WardSummary).where(WardSummary.ward_name.ilike(ward_name))
+    ward_stmt = select(WardSummary).where(
+        WardSummary.election_year == election_year,
+        WardSummary.ward_name.ilike(ward_name),
+    )
     if constituency_name:
         ward_stmt = ward_stmt.where(WardSummary.constituency_name.ilike(f"%{constituency_name}%"))
     if county_code is not None:
@@ -85,7 +94,10 @@ def ward_polling_stations(
     ward_code = wards[0].ward_code
     stmt = (
         select(PollingStation)
-        .where(PollingStation.ward_code == ward_code)
+        .where(
+            PollingStation.election_year == election_year,
+            PollingStation.ward_code == ward_code,
+        )
         .order_by(PollingStation.polling_station_name)
     )
     items, total = paginate(db, stmt, page)

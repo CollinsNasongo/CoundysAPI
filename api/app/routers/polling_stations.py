@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.common import Pagination, paginate, pagination_params
+from app.common import Pagination, election_year_param, paginate, pagination_params
 from app.database import get_db
 from app.models import PollingStation
 from app.schemas import Page, PollingStationRead
@@ -18,10 +18,11 @@ def list_polling_stations(
     ward_name: str | None = Query(default=None, description="Filter by parent ward name (partial match)"),
     constituency_name: str | None = Query(default=None, description="Filter by parent constituency name (partial match)"),
     county_code: int | None = Query(default=None, description="Filter by parent county code"),
+    election_year: int = Depends(election_year_param),
     db: Session = Depends(get_db),
     page: Pagination = Depends(pagination_params),
 ) -> Page:
-    stmt = select(PollingStation)
+    stmt = select(PollingStation).where(PollingStation.election_year == election_year)
 
     if ward_name:
         stmt = stmt.where(PollingStation.ward_name.ilike(f"%{ward_name}%"))
@@ -47,10 +48,12 @@ def get_polling_station(
     ward_name: str | None = Query(default=None, description="Disambiguate if multiple stations share this name"),
     constituency_name: str | None = Query(default=None, description="Disambiguate if multiple stations share this name"),
     county_code: int | None = Query(default=None, description="Disambiguate if multiple stations share this name"),
+    election_year: int = Depends(election_year_param),
     db: Session = Depends(get_db),
 ) -> list[PollingStation]:
     stmt = select(PollingStation).where(
-        PollingStation.polling_station_name.ilike(polling_station_name)
+        PollingStation.election_year == election_year,
+        PollingStation.polling_station_name.ilike(polling_station_name),
     )
     if ward_name:
         stmt = stmt.where(PollingStation.ward_name.ilike(f"%{ward_name}%"))

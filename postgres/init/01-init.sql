@@ -12,6 +12,7 @@ GRANT USAGE ON SCHEMA coundys_gold TO PUBLIC;
 
 
 CREATE TABLE IF NOT EXISTS coundys_bronze.polling_station (
+    election_year          INTEGER NOT NULL,
     county_code            INTEGER NOT NULL,
     county_name            TEXT NOT NULL,
 
@@ -30,5 +31,5 @@ CREATE TABLE IF NOT EXISTS coundys_bronze.polling_station (
 
     registered_voters      INTEGER NOT NULL,
 
-    PRIMARY KEY (polling_station_code, polling_station_seq)
+    PRIMARY KEY (election_year, caw_code, polling_station_code, polling_station_seq)
 );

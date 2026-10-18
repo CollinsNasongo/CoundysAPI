@@ -7,8 +7,11 @@ from app.database.connection import DatabaseConnection
 from app.database.database_config import DatabaseConfig
 
 
+TRUNCATE_SQL = text("TRUNCATE TABLE coundys_bronze.polling_station")
+
 INSERT_SQL = text("""
     INSERT INTO coundys_bronze.polling_station (
+        election_year,
         county_code,
         county_name,
         const_code,
@@ -23,6 +26,7 @@ INSERT_SQL = text("""
         registered_voters
     )
     VALUES (
+        :election_year,
         :county_code,
         :county_name,
         :const_code,
@@ -46,6 +50,7 @@ def _read_csv(csv_file: Path) -> list[dict]:
         reader = csv.DictReader(f)
 
         for row in reader:
+            row["election_year"] = int(row["election_year"])
             row["county_code"] = int(row["county_code"])
             row["const_code"] = int(row["const_code"])
             row["caw_code"] = int(row["caw_code"])
@@ -82,19 +87,25 @@ def load_bronze_csvs(
             print(f"exists: {csv_dir.exists()}")
             print(f"is_dir: {csv_dir.is_dir()}")
 
-            for csv_file in csv_dir.glob("*.csv"):
+            # Full reload: clear bronze and load every year's file in one
+            # transaction, so a failed run leaves the previous load intact.
+            conn.execute(TRUNCATE_SQL)
+
+            # CSVs live in per-year subfolders (data/2017/, data/2022/, ...)
+            for csv_file in sorted(csv_dir.rglob("*.csv")):
                 print(f"Loading file: {csv_file.name}")
 
                 rows = _read_csv(csv_file)
 
                 if rows:
                     conn.execute(INSERT_SQL, rows)
-                    conn.commit()
 
                 print(
                     f"Loaded {csv_file.name}: "
                     f"{len(rows):,} rows"
                 )
+
+            conn.commit()
 
     except Exception as e:
         print(

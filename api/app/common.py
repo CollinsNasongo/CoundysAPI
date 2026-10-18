@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from fastapi import Query
+from fastapi import Depends, HTTPException, Query
 from sqlalchemy import ColumnElement, Select, func, select
 from sqlalchemy.orm import InstrumentedAttribute, Session
 
 from app.config import settings
+from app.database import get_db
+from app.models import NationalSummary
 
 
 @dataclass
@@ -22,6 +24,36 @@ def pagination_params(
     offset: int = Query(default=0, ge=0),
 ) -> Pagination:
     return Pagination(limit=limit, offset=offset)
+
+
+def election_year_param(
+    election_year: int | None = Query(
+        default=None,
+        description="Election year (e.g. 2017, 2022). Defaults to the latest loaded year.",
+    ),
+    db: Session = Depends(get_db),
+) -> int:
+    """Resolve the requested election year, defaulting to the latest one loaded.
+
+    national_summary has exactly one row per loaded year, so it doubles as the
+    list of valid years.
+    """
+    if election_year is None:
+        latest = db.scalar(select(func.max(NationalSummary.election_year)))
+        if latest is None:
+            raise HTTPException(status_code=404, detail="No election data loaded")
+        return latest
+
+    exists = db.scalar(
+        select(NationalSummary.election_year).where(
+            NationalSummary.election_year == election_year
+        )
+    )
+    if exists is None:
+        raise HTTPException(
+            status_code=404, detail=f"No data for election year {election_year}"
+        )
+    return election_year
 
 
 def name_or_code_filter(
@@ -40,11 +72,6 @@ def name_or_code_filter(
     q = q.strip()
     if q.isdigit():
         return code_col == int(q)
-    # Plain LIKE: SQL Server's default collation is case-INsensitive, so this
-    # matches regardless of case AND stays sargable (uses IX_*_name). Wrapping
-    # the column in lower()/ilike would force a scan. If your DB uses a
-    # case-SENSITIVE collation, switch to name_col.ilike(...) or add a
-    # normalized lower-cased column to index instead.
     return name_col.like(f"{q}%")
 
 
